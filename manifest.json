@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Alpha Plugin - 网页区域选择器",
+  "version": "1.0",
+  "description": "一个可以选择网页指定区域、添加描述并抓取数据的Chrome插件",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Alpha Plugin"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["selection-overlay.html", "selection-overlay.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Alpha Plugin</h1>
+    <div class="section">
+      <h3>网页区域选择器</h3>
+      <p>点击下方按钮开始选择网页区域</p>
+    </div>
+    
+    <div class="buttons">
+      <button id="startSelection" class="primary-btn">开始选择区域</button>
+      <button id="stopSelection" class="secondary-btn" style="display: none;">停止选择</button>
+    </div>
+    
+    <div class="section" id="descriptionSection" style="display: none;">
+      <label for="description">添加描述：</label>
+      <textarea id="description" placeholder="请输入对选择区域的描述..."></textarea>
+      <button id="captureData" class="primary-btn">抓取数据</button>
+    </div>
+    
+    <div class="section" id="statusSection">
+      <div id="status">准备就绪</div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
