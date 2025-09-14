@@ -391,11 +391,182 @@ function isSelectorUnique(selector) {
   }
 }
 
-// Function to generate stable and unique CSS selectors for crawler use
+// 检测元素是否在相似的兄弟元素列表中
+function isElementInSimilarSiblingsList(el) {
+  const parent = el.parentElement;
+  if (!parent) return false;
+  
+  const siblings = Array.from(parent.children);
+  if (siblings.length < 2) return false;
+  
+  // 获取当前元素的兄弟元素
+  const sameLevelElements = siblings.filter(sibling => 
+    sibling.tagName === el.tagName && sibling !== el
+  );
+  
+  if (sameLevelElements.length === 0) return false;
+  
+  // 检查是否为列表项或表格行等典型的重复结构
+  const isListLike = /^(li|tr|td|th|option|article|section|div)$/i.test(el.tagName);
+  if (isListLike && sameLevelElements.length >= 1) {
+    return true;
+  }
+  
+  // 检查兄弟元素是否有相似的结构特征
+  const currentElementFeatures = getElementStructuralFeatures(el);
+  const similarSiblings = sameLevelElements.filter(sibling => {
+    const siblingFeatures = getElementStructuralFeatures(sibling);
+    return areFeaturesStructurallySimilar(currentElementFeatures, siblingFeatures);
+  });
+  
+  // 如果有2个或更多相似的兄弟元素，认为是在列表中
+  return similarSiblings.length >= 1;
+}
+
+// 获取元素的结构特征
+function getElementStructuralFeatures(el) {
+  return {
+    tagName: el.tagName,
+    childElementCount: el.children.length,
+    hasClass: el.className && el.className.trim().length > 0,
+    classNames: el.className ? el.className.trim().split(/\s+/).sort() : [],
+    hasId: el.id && el.id.trim().length > 0,
+    hasAttributes: el.attributes.length > 0,
+    hasText: el.textContent && el.textContent.trim().length > 0,
+    childTagNames: Array.from(el.children).map(child => child.tagName).sort()
+  };
+}
+
+// 判断两个元素的结构特征是否相似
+function areFeaturesStructurallySimilar(features1, features2) {
+  // 标签名必须相同
+  if (features1.tagName !== features2.tagName) return false;
+  
+  // 子元素数量差异不能太大
+  const childCountDiff = Math.abs(features1.childElementCount - features2.childElementCount);
+  if (childCountDiff > 2) return false;
+  
+  // 至少有一个共同点：相同的class、相似的子元素结构等
+  const hasCommonClasses = features1.classNames.some(cls => features2.classNames.includes(cls));
+  const hasSimilarChildStructure = 
+    features1.childTagNames.length === features2.childTagNames.length &&
+    features1.childTagNames.every((tag, index) => tag === features2.childTagNames[index]);
+  
+  return hasCommonClasses || hasSimilarChildStructure || 
+         (features1.childElementCount === features2.childElementCount);
+}
+
+// 生成基于父元素和索引的选择器
+function generateParentBasedIndexSelector(el) {
+  const parent = el.parentElement;
+  if (!parent) return null;
+  
+  const selectors = [];
+  
+  // 计算元素在同标签兄弟中的索引
+  const siblings = Array.from(parent.children).filter(child => child.tagName === el.tagName);
+  const index = siblings.indexOf(el) + 1; // CSS中索引从1开始
+  
+  // 方案1：父元素ID + 子元素标签:nth-of-type
+  if (parent.id && parent.id.trim()) {
+    const selector = `#${CSS.escape(parent.id)} > ${el.tagName.toLowerCase()}:nth-of-type(${index})`;
+    if (isSelectorUnique(selector)) {
+      selectors.push({
+        type: 'Parent ID + Index',
+        selector: selector,
+        description: `通过父元素ID和第${index}个${el.tagName.toLowerCase()}选择（推荐）`,
+        priority: 2,
+        unique: true,
+        stable: true
+      });
+    }
+  }
+  
+  // 方案2：父元素class + 子元素标签:nth-of-type
+  if (parent.className && typeof parent.className === 'string') {
+    const parentClasses = parent.className.trim().split(/\s+/).filter(c => c.length > 0);
+    for (const cls of parentClasses) {
+      const selector = `.${CSS.escape(cls)} > ${el.tagName.toLowerCase()}:nth-of-type(${index})`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          type: 'Parent Class + Index',
+          selector: selector,
+          description: `通过父元素class和第${index}个${el.tagName.toLowerCase()}选择`,
+          priority: 3,
+          unique: true,
+          stable: true
+        });
+        break; // 只需要一个有效的class选择器
+      }
+    }
+  }
+  
+  // 方案3：父元素测试属性 + 子元素标签:nth-of-type
+  const testAttributes = ['data-testid', 'data-test', 'data-cy'];
+  for (const attr of testAttributes) {
+    const value = parent.getAttribute(attr);
+    if (value && value.trim()) {
+      const selector = `[${attr}="${CSS.escape(value)}"] > ${el.tagName.toLowerCase()}:nth-of-type(${index})`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          type: 'Parent Test Attr + Index',
+          selector: selector,
+          description: `通过父元素测试属性和第${index}个${el.tagName.toLowerCase()}选择`,
+          priority: 2,
+          unique: true,
+          stable: true
+        });
+        break;
+      }
+    }
+  }
+  
+  // 方案4：通用的:nth-child选择器（相对不稳定）
+  const childIndex = Array.from(parent.children).indexOf(el) + 1;
+  const fallbackSelector = `${parent.tagName.toLowerCase()} > ${el.tagName.toLowerCase()}:nth-child(${childIndex})`;
+  selectors.push({
+    type: 'Position Index',
+    selector: fallbackSelector,
+    description: `通过位置索引选择（第${childIndex}个子元素，相对不稳定）`,
+    priority: 8,
+    unique: false,
+    stable: false
+  });
+  
+  return selectors;
+}
+
+// 新的CSS选择器生成算法 - 确保全局唯一性
 function generateMultipleSelectors(el) {
   const selectors = [];
   
-  // 1. ID选择器（最优先，通常唯一）
+  // 1. 直接唯一标识符检测
+  const directSelectors = generateDirectSelectors(el);
+  selectors.push(...directSelectors);
+  
+  // 如果已经有唯一的直接选择器，可以提前返回，但我们继续生成备选方案
+  
+  // 2. 基于祖先的唯一路径选择器
+  const ancestorBasedSelectors = generateAncestorBasedSelectors(el);
+  selectors.push(...ancestorBasedSelectors);
+  
+  // 3. 处理相似兄弟元素的特殊情况
+  const siblingAwareSelectors = generateSiblingAwareSelectors(el);
+  selectors.push(...siblingAwareSelectors);
+  
+  // 4. 备选方案：完整结构路径
+  const fallbackSelectors = generateStructuralPathSelectors(el);
+  selectors.push(...fallbackSelectors);
+  
+  // 5. 验证所有选择器的唯一性并排序
+  return validateAndSortSelectors(selectors, el);
+}
+
+// 生成直接选择器（ID、唯一属性等）
+function generateDirectSelectors(el) {
+  const selectors = [];
+  
+  // 1.1 ID选择器（最优先）
   if (el.id && el.id.trim()) {
     const idSelector = `#${CSS.escape(el.id)}`;
     if (isSelectorUnique(idSelector)) {
@@ -405,12 +576,13 @@ function generateMultipleSelectors(el) {
         description: '通过ID选择（最稳定，推荐用于爬虫）',
         priority: 1,
         unique: true,
-        stable: true
+        stable: true,
+        specificity: 100
       });
     }
   }
   
-  // 2. 测试相关属性选择器（通常用于自动化测试，很稳定）
+  // 1.2 测试属性选择器
   const testAttributes = ['data-testid', 'data-test', 'data-cy', 'data-test-id', 'data-automation-id'];
   testAttributes.forEach(attr => {
     const value = el.getAttribute(attr);
@@ -423,32 +595,34 @@ function generateMultipleSelectors(el) {
           description: `通过测试属性${attr}选择（推荐用于爬虫）`,
           priority: 2,
           unique: true,
-          stable: true
+          stable: true,
+          specificity: 10
         });
       }
     }
   });
   
-  // 3. 其他重要属性选择器
-  const importantAttributes = ['name', 'aria-label', 'title', 'alt', 'href', 'src'];
-  importantAttributes.forEach(attr => {
+  // 1.3 其他唯一属性选择器
+  const uniqueAttributes = ['name', 'aria-label', 'title', 'alt', 'href', 'src'];
+  uniqueAttributes.forEach(attr => {
     const value = el.getAttribute(attr);
     if (value && value.trim()) {
       const selector = `[${attr}="${CSS.escape(value)}"]`;
       if (isSelectorUnique(selector)) {
         selectors.push({
-          type: 'Attribute',
+          type: 'Unique Attribute',
           selector: selector,
           description: `通过${attr}属性选择`,
           priority: 3,
           unique: true,
-          stable: true
+          stable: true,
+          specificity: 10
         });
       }
     }
   });
   
-  // 4. 稳定的class选择器（检查唯一性）
+  // 1.4 唯一class选择器
   if (el.className && typeof el.className === 'string') {
     const classes = el.className.trim().split(/\s+/).filter(c => c.length > 0);
     
@@ -462,7 +636,8 @@ function generateMultipleSelectors(el) {
           description: `通过唯一class "${cls}" 选择`,
           priority: 4,
           unique: true,
-          stable: true
+          stable: true,
+          specificity: 10
         });
       }
     });
@@ -477,67 +652,300 @@ function generateMultipleSelectors(el) {
           description: `通过多个class组合选择`,
           priority: 4,
           unique: true,
-          stable: true
+          stable: true,
+          specificity: 10 * classes.length
         });
       }
     }
   }
   
-  // 5. 基于父元素的稳定选择器
-  const parentSelectors = generateStableParentSelectors(el);
-  parentSelectors.forEach((selector, index) => {
-    selectors.push({
-      type: 'Parent-based',
-      selector: selector.selector,
-      description: selector.description,
-      priority: 5 + index,
-      unique: selector.unique,
-      stable: selector.stable
-    });
-  });
+  return selectors;
+}
+
+// 生成基于祖先的选择器
+function generateAncestorBasedSelectors(el) {
+  const selectors = [];
+  const path = [];
+  let current = el;
+  let foundUniqueAncestor = false;
   
-  // 6. 基于文本内容的唯一选择器（如果文本较短且唯一）
-  const text = el.textContent.trim();
-  if (text && text.length > 0 && text.length < 30 && !text.includes('\n') && !text.includes('  ')) {
-    const textSelector = `${el.tagName.toLowerCase()}:contains("${text}")`;
-    // 注意：:contains不是标准CSS，但某些爬虫框架支持
-    selectors.push({
-      type: 'Text Content',
-      selector: textSelector,
-      description: `通过文本内容选择（非标准CSS，部分爬虫支持）`,
-      priority: 8,
-      unique: false,
-      stable: false
-    });
+  // 向上遍历DOM树，寻找有唯一标识的祖先
+  while (current && current !== document.body && path.length < 10) {
+    const stepInfo = getElementStepInfo(current);
+    path.unshift(stepInfo);
+    
+    // 检查当前路径是否已经唯一
+    if (stepInfo.isUnique) {
+      foundUniqueAncestor = true;
+      break;
+    }
+    
+    current = current.parentElement;
   }
   
-  // 7. 备选方案：基于位置的相对选择器
-  const fallbackSelectors = generateFallbackSelectors(el);
-  fallbackSelectors.forEach((selector, index) => {
-    selectors.push({
-      type: 'Fallback',
-      selector: selector.selector,
-      description: selector.description,
-      priority: 9 + index,
-      unique: selector.unique,
-      stable: false
-    });
-  });
-  
-  // 按优先级排序，优先显示唯一且稳定的选择器
-  selectors.sort((a, b) => {
-    if (a.unique && !b.unique) return -1;
-    if (!a.unique && b.unique) return 1;
-    if (a.stable && !b.stable) return -1;
-    if (!a.stable && b.stable) return 1;
-    return a.priority - b.priority;
-  });
+  // 如果找到了唯一祖先，构建选择器
+  if (foundUniqueAncestor && path.length > 1) {
+    const uniqueRoot = path[0];
+    const pathFromRoot = path.slice(1);
+    
+    // 方案1：使用直接子选择器
+    const directChildSelector = uniqueRoot.selector + ' > ' + 
+      pathFromRoot.map(step => step.directSelector).join(' > ');
+    
+    if (isSelectorUnique(directChildSelector)) {
+      selectors.push({
+        type: 'Ancestor Direct Path',
+        selector: directChildSelector,
+        description: `通过唯一祖先${uniqueRoot.type}的直接路径选择`,
+        priority: 5,
+        unique: true,
+        stable: true,
+        specificity: uniqueRoot.specificity + pathFromRoot.length
+      });
+    }
+    
+    // 方案2：使用后代选择器（更宽松）
+    const descendantSelector = uniqueRoot.selector + ' ' + 
+      pathFromRoot.map(step => step.flexibleSelector).join(' ');
+    
+    if (isSelectorUnique(descendantSelector) && descendantSelector !== directChildSelector) {
+      selectors.push({
+        type: 'Ancestor Descendant Path',
+        selector: descendantSelector,
+        description: `通过唯一祖先${uniqueRoot.type}的后代路径选择`,
+        priority: 6,
+        unique: true,
+        stable: true,
+        specificity: uniqueRoot.specificity + pathFromRoot.length * 0.5
+      });
+    }
+  }
   
   return selectors;
 }
 
-// 生成基于父元素的稳定选择器
+// 获取元素的路径步骤信息
+function getElementStepInfo(el) {
+  const stepInfo = {
+    element: el,
+    tagName: el.tagName.toLowerCase(),
+    isUnique: false,
+    specificity: 1,
+    directSelector: el.tagName.toLowerCase(),
+    flexibleSelector: el.tagName.toLowerCase()
+  };
+  
+  // 检查ID
+  if (el.id && el.id.trim()) {
+    const idSelector = `#${CSS.escape(el.id)}`;
+    if (isSelectorUnique(idSelector)) {
+      stepInfo.selector = idSelector;
+      stepInfo.type = 'ID';
+      stepInfo.isUnique = true;
+      stepInfo.specificity = 100;
+      stepInfo.directSelector = idSelector;
+      stepInfo.flexibleSelector = idSelector;
+      return stepInfo;
+    }
+  }
+  
+  // 检查测试属性
+  const testAttributes = ['data-testid', 'data-test', 'data-cy'];
+  for (const attr of testAttributes) {
+    const value = el.getAttribute(attr);
+    if (value && value.trim()) {
+      const selector = `[${attr}="${CSS.escape(value)}"]`;
+      if (isSelectorUnique(selector)) {
+        stepInfo.selector = selector;
+        stepInfo.type = 'Test Attribute';
+        stepInfo.isUnique = true;
+        stepInfo.specificity = 50;
+        stepInfo.directSelector = selector;
+        stepInfo.flexibleSelector = selector;
+        return stepInfo;
+      }
+    }
+  }
+  
+  // 检查唯一class
+  if (el.className && typeof el.className === 'string') {
+    const classes = el.className.trim().split(/\s+/).filter(c => c.length > 0);
+    
+    for (const cls of classes) {
+      const selector = `.${CSS.escape(cls)}`;
+      if (isSelectorUnique(selector)) {
+        stepInfo.selector = selector;
+        stepInfo.type = 'Unique Class';
+        stepInfo.isUnique = true;
+        stepInfo.specificity = 30;
+        stepInfo.directSelector = selector;
+        stepInfo.flexibleSelector = selector;
+        return stepInfo;
+      }
+    }
+    
+    // 使用第一个class作为灵活选择器
+    if (classes.length > 0) {
+      stepInfo.flexibleSelector = `${el.tagName.toLowerCase()}.${CSS.escape(classes[0])}`;
+      stepInfo.specificity = 2;
+    }
+  }
+  
+  // 如果需要索引来区分兄弟元素
+  const siblings = Array.from(el.parentElement?.children || []);
+  const sameTagSiblings = siblings.filter(sibling => sibling.tagName === el.tagName);
+  
+  if (sameTagSiblings.length > 1) {
+    const index = sameTagSiblings.indexOf(el) + 1;
+    stepInfo.directSelector = `${el.tagName.toLowerCase()}:nth-of-type(${index})`;
+    stepInfo.specificity = 2;
+  }
+  
+  return stepInfo;
+}
+
+// 生成兄弟元素感知的选择器
+function generateSiblingAwareSelectors(el) {
+  const selectors = [];
+  
+  // 检查是否在相似的兄弟元素列表中
+  if (isElementInSimilarSiblingsList(el)) {
+    const parentIndexSelectors = generateParentBasedIndexSelector(el);
+    selectors.push(...parentIndexSelectors);
+  }
+  
+  return selectors;
+}
+
+// 生成结构路径选择器（备选方案）
+function generateStructuralPathSelectors(el) {
+  const selectors = [];
+  
+  // 生成完整的结构路径（作为最后的备选方案）
+  const fullPath = generateFullStructuralPath(el);
+  if (fullPath && isSelectorUnique(fullPath)) {
+    selectors.push({
+      type: 'Full Structural Path',
+      selector: fullPath,
+      description: '完整结构路径（备选方案）',
+      priority: 15,
+      unique: true,
+      stable: false,
+      specificity: fullPath.split(' ').length
+    });
+  }
+  
+  // 基于文本内容的选择器（仅作为最后备选）
+  const text = el.textContent.trim();
+  if (text && text.length > 0 && text.length < 30 && !text.includes('\n')) {
+    const textSelector = `${el.tagName.toLowerCase()}:contains("${text}")`;
+    selectors.push({
+      type: 'Text Content',
+      selector: textSelector,
+      description: '基于文本内容选择（非标准CSS，不推荐）',
+      priority: 20,
+      unique: false,
+      stable: false,
+      specificity: 1
+    });
+  }
+  
+  return selectors;
+}
+
+// 生成完整的结构路径
+function generateFullStructuralPath(el) {
+  const path = [];
+  let current = el;
+  
+  while (current && current !== document.body && path.length < 15) {
+    let selector = current.tagName.toLowerCase();
+    
+    // 添加class信息（如果有）
+    if (current.className && typeof current.className === 'string') {
+      const classes = current.className.trim().split(/\s+/).filter(c => c.length > 0);
+      if (classes.length > 0) {
+        selector += `.${CSS.escape(classes[0])}`;
+      }
+    }
+    
+    // 添加nth-child信息（如果有多个相同元素）
+    const siblings = Array.from(current.parentElement?.children || []);
+    const sameTagSiblings = siblings.filter(sibling => sibling.tagName === current.tagName);
+    
+    if (sameTagSiblings.length > 1) {
+      const index = sameTagSiblings.indexOf(current) + 1;
+      selector += `:nth-of-type(${index})`;
+    }
+    
+    path.unshift(selector);
+    current = current.parentElement;
+  }
+  
+  return path.length > 0 ? path.join(' > ') : null;
+}
+
+// 验证并排序选择器
+function validateAndSortSelectors(selectors, targetElement) {
+  // 过滤出确实唯一的选择器
+  const validSelectors = selectors.filter(selectorObj => {
+    try {
+      const elements = document.querySelectorAll(selectorObj.selector);
+      return elements.length === 1 && elements[0] === targetElement;
+    } catch (e) {
+      console.warn('Invalid selector:', selectorObj.selector, e);
+      return false;
+    }
+  });
+  
+  // 按优先级和特异性排序
+  validSelectors.sort((a, b) => {
+    // 首先按优先级排序
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+    
+    // 如果优先级相同，按特异性排序（特异性高的优先）
+    if (a.specificity !== b.specificity) {
+      return b.specificity - a.specificity;
+    }
+    
+    // 最后按选择器长度排序（短的优先）
+    return a.selector.length - b.selector.length;
+  });
+  
+  return validSelectors;
+}
+
+// 生成基于父元素的稳定选择器（保留原有函数，用于兼容）
 function generateStableParentSelectors(el) {
+  const selectors = [];
+  let parent = el.parentElement;
+  let level = 1;
+  
+  while (parent && level <= 3) {
+    // 如果父元素有ID，使用父元素ID + 子元素标签
+    if (parent.id && parent.id.trim()) {
+      const selector = `#${CSS.escape(parent.id)} > ${el.tagName.toLowerCase()}`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          selector: selector,
+          description: `通过父元素ID选择（${level}级父元素）`,
+          unique: true,
+          stable: true
+        });
+      }
+    }
+    
+    parent = parent.parentElement;
+    level++;
+  }
+  
+  return selectors;
+}
+
+// 生成备选方案选择器
+function generateFallbackSelectors(el) {
   const selectors = [];
   let parent = el.parentElement;
   let level = 1;
