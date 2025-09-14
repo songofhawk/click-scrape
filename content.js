@@ -143,10 +143,26 @@ function createInfoPanel() {
   let initialY = 0;
   let xOffset = 0;
   let yOffset = 0;
+  let hasBeenDragged = false; // Track if panel has been dragged before
   
   const header = panel.querySelector('#panel-header');
   
   header.addEventListener('mousedown', (e) => {
+    // If this is the first drag, calculate initial position from right-positioned panel
+    if (!hasBeenDragged) {
+      const rect = panel.getBoundingClientRect();
+      currentX = rect.left;
+      currentY = rect.top;
+      xOffset = currentX;
+      yOffset = currentY;
+      hasBeenDragged = true;
+      
+      // Switch from right positioning to left positioning
+      panel.style.right = 'auto';
+      panel.style.left = currentX + 'px';
+      panel.style.top = currentY + 'px';
+    }
+    
     initialX = e.clientX - xOffset;
     initialY = e.clientY - yOffset;
     
@@ -175,7 +191,6 @@ function createInfoPanel() {
       
       panel.style.left = currentX + 'px';
       panel.style.top = currentY + 'px';
-      panel.style.right = 'auto'; // Override initial right positioning
     }
   });
   
@@ -282,7 +297,7 @@ function loadAndDisplayHistory() {
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                   <td style="padding: 4px; font-weight: bold;">${item.tagName}</td>
                   <td style="padding: 4px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.text || '(no text)'}">${item.text ? item.text.substring(0, 15) + (item.text.length > 15 ? '...' : '') : '(no text)'}</td>
-                  <td style="padding: 4px; font-family: monospace; cursor: pointer; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="event.preventDefault(); event.stopPropagation(); navigator.clipboard.writeText('${item.selector}'); this.style.background='rgba(255,255,255,0.2)'; setTimeout(() => this.style.background='transparent', 1000);" title="Click to copy: ${item.selector}">${item.selector}</td>
+                  <td style="padding: 4px; font-family: monospace; cursor: pointer; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" class="selector-cell" data-selector="${item.selector.replace(/"/g, '&quot;')}" title="Click to copy: ${item.selector}">${item.selector}</td>
                   <td style="padding: 4px; font-size: 9px; color: ${qualityColor}; font-weight: bold;">${quality}</td>
                   <td style="padding: 4px; font-size: 9px; color: rgba(255,255,255,0.8);">${item.timestamp}</td>
                 </tr>
@@ -293,6 +308,31 @@ function loadAndDisplayHistory() {
       `;
       
       historyContent.innerHTML = htmlContent;
+      
+      // Add event delegation for selector cell clicks
+      historyContent.addEventListener('click', (e) => {
+        if (e.target.classList.contains('selector-cell')) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const selector = e.target.getAttribute('data-selector');
+          if (selector) {
+            // Copy to clipboard
+            navigator.clipboard.writeText(selector).then(() => {
+              // Visual feedback
+              const originalBackground = e.target.style.background;
+              e.target.style.background = 'rgba(255,255,255,0.2)';
+              setTimeout(() => {
+                e.target.style.background = originalBackground;
+              }, 1000);
+            }).catch(err => {
+              console.error('Failed to copy to clipboard:', err);
+              // Fallback: show alert
+              alert('Selector copied: ' + selector);
+            });
+          }
+        }
+      });
     }
   } catch (error) {
     console.error('Error loading history:', error);
