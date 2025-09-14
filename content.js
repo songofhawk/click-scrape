@@ -73,7 +73,10 @@ function createInfoPanel() {
     <div id="history-section" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">
       <div style="font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
         <span>📝 Click History</span>
-        <button id="clear-history" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">Clear</button>
+        <div>
+          <button id="clear-history" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer; margin-right: 5px;">Clear</button>
+          <button id="close-panel" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">Close</button>
+        </div>
       </div>
       <div id="history-content" style="max-height: 300px; overflow-y: auto;">
         <div class="empty-state" style="text-align: center; color: rgba(255,255,255,0.7); padding: 10px; font-style: italic; font-size: 11px;">
@@ -92,6 +95,22 @@ function createInfoPanel() {
       localStorage.removeItem('clickScrapeHistory');
       loadAndDisplayHistory();
     }
+  });
+  
+  // Add close panel button functionality
+  panel.querySelector('#close-panel').addEventListener('click', (e) => {
+    e.stopPropagation();
+    // Hide the panel and stop selection mode
+    panel.style.display = 'none';
+    // Remove any existing selection mode
+    const existingOverlay = document.getElementById('click-scrape-overlay');
+    const existingHighlight = document.getElementById('click-scrape-highlight');
+    if (existingOverlay) existingOverlay.remove();
+    if (existingHighlight) existingHighlight.remove();
+    // Remove event listeners
+    document.removeEventListener('mousemove', window.clickScrapeMouseMove);
+    document.removeEventListener('click', window.clickScrapeClick, true);
+    document.removeEventListener('keydown', window.clickScrapeKeyDown);
   });
   
   return panel;
@@ -378,31 +397,39 @@ function startElementSelection() {
     return;
   }
 
+  // Check if selection is already active
+  if (window.clickScrapeActive) {
+    console.log('Selection already active');
+    return;
+  }
+
   // Create UI elements
   const overlay = createOverlay();
   const highlightBox = createHighlightBox();
   const infoPanel = createInfoPanel();
   
-  let isSelecting = true;
+  window.clickScrapeActive = true;
   let currentElement = null;
 
   // Show overlay
   overlay.style.display = 'block';
+  infoPanel.style.display = 'block';
+  loadAndDisplayHistory();
 
   // Mouse move handler
-  function handleMouseMove(event) {
-    if (!isSelecting) return;
+  window.clickScrapeMouseMove = function(event) {
+    if (!window.clickScrapeActive) return;
     
     const element = document.elementFromPoint(event.clientX, event.clientY);
     if (element && element !== currentElement) {
       currentElement = element;
       highlightElement(element, highlightBox, infoPanel);
     }
-  }
+  };
 
   // Click handler
-  function handleClick(event) {
-    if (!isSelecting) return;
+  window.clickScrapeClick = function(event) {
+    if (!window.clickScrapeActive) return;
     
     event.preventDefault();
     event.stopPropagation();
@@ -430,29 +457,48 @@ function startElementSelection() {
       } catch (error) {
         console.log('Error sending message:', error);
       }
+      
+      // Show success feedback
+      const elementDetails = infoPanel.querySelector('#element-details');
+      if (elementDetails) {
+        const originalContent = elementDetails.innerHTML;
+        elementDetails.innerHTML = `
+          <div style="color: #90EE90; font-weight: bold; margin-bottom: 5px;">✅ Element Selected!</div>
+          <div style="margin-bottom: 3px;"><strong>Tag:</strong> ${currentElement.tagName.toLowerCase()}</div>
+          <div style="margin-bottom: 3px;"><strong>Text:</strong> ${elementText.substring(0, 50)}${elementText.length > 50 ? '...' : ''}</div>
+          <div style="margin-bottom: 3px;"><strong>Best Selector:</strong> ${selectors[0] ? selectors[0].selector : 'N/A'}</div>
+          <div style="margin-top: 5px; font-size: 10px; opacity: 0.8;">Continue selecting or press ESC to exit</div>
+        `;
+        
+        // Restore original content after 2 seconds
+        setTimeout(() => {
+          if (window.clickScrapeActive) {
+            elementDetails.innerHTML = originalContent;
+          }
+        }, 2000);
+      }
     }
     
-    // Clean up
-    cleanup();
-  }
+    // Don't cleanup - keep selection mode active
+  };
 
   // Escape key handler
-  function handleKeyDown(event) {
+  window.clickScrapeKeyDown = function(event) {
     if (event.key === 'Escape') {
       cleanup();
     }
-  }
+  };
 
   // Cleanup function
   function cleanup() {
-    isSelecting = false;
+    window.clickScrapeActive = false;
     overlay.style.display = 'none';
     hideHighlight(highlightBox, infoPanel);
     
     // Remove event listeners
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('click', handleClick, true);
-    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('mousemove', window.clickScrapeMouseMove);
+    document.removeEventListener('click', window.clickScrapeClick, true);
+    document.removeEventListener('keydown', window.clickScrapeKeyDown);
     
     // Remove UI elements
     setTimeout(() => {
@@ -463,9 +509,9 @@ function startElementSelection() {
   }
 
   // Add event listeners
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('click', handleClick, true);
-  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('mousemove', window.clickScrapeMouseMove);
+  document.addEventListener('click', window.clickScrapeClick, true);
+  document.addEventListener('keydown', window.clickScrapeKeyDown);
   
   console.log('Element selection started. Hover over elements and click to select, or press ESC to cancel.');
 }
