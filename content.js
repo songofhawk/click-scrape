@@ -222,6 +222,49 @@ function createInfoPanel() {
   return panel;
 }
 
+// Show copy success message
+function showCopySuccessMessage(selector) {
+  // Find the info panel
+  const infoPanel = document.getElementById('click-scrape-info');
+  if (!infoPanel) return;
+  
+  // Create or find the message container
+  let messageContainer = infoPanel.querySelector('#copy-success-message');
+  if (!messageContainer) {
+    messageContainer = document.createElement('div');
+    messageContainer.id = 'copy-success-message';
+    messageContainer.style.cssText = `
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 255, 0, 0.9);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      z-index: 1000002;
+      display: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      white-space: nowrap;
+      max-width: 300px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
+    infoPanel.appendChild(messageContainer);
+  }
+  
+  // Show the message
+  messageContainer.textContent = `✅ Copied: ${selector.length > 30 ? selector.substring(0, 30) + '...' : selector}`;
+  messageContainer.style.display = 'block';
+  
+  // Hide after 2 seconds
+  setTimeout(() => {
+    messageContainer.style.display = 'none';
+  }, 2000);
+}
+
 // Local storage functions
 function saveToHistory(elementData) {
   try {
@@ -319,12 +362,8 @@ function loadAndDisplayHistory() {
           if (selector) {
             // Copy to clipboard
             navigator.clipboard.writeText(selector).then(() => {
-              // Visual feedback
-              const originalBackground = e.target.style.background;
-              e.target.style.background = 'rgba(255,255,255,0.2)';
-              setTimeout(() => {
-                e.target.style.background = originalBackground;
-              }, 1000);
+              // Show success message in the panel
+              showCopySuccessMessage(selector);
             }).catch(err => {
               console.error('Failed to copy to clipboard:', err);
               // Fallback: show alert
