@@ -74,7 +74,10 @@ function createInfoPanel() {
   panel.innerHTML = `
     <div id="panel-header" style="cursor: move; padding: 5px 0; margin: -10px -10px 10px -10px; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 5px 5px 0 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2);">
       <span style="font-weight: bold;">🔧 Element Scraper Panel</span>
-      <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">⬍⬍ Drag to move</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">⬍⬍ Drag to move</span>
+        <button id="toggle-panel" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; cursor: pointer; font-weight: bold;" title="Collapse panel">−</button>
+      </div>
     </div>
     <div id="current-element-info" style="margin-bottom: 10px;">
       <div style="font-weight: bold; margin-bottom: 5px;">🎯 Current Element</div>
@@ -134,6 +137,142 @@ function createInfoPanel() {
     window.clickScrapeActive = false;
     return false;
   });
+
+  // Add toggle panel button functionality (collapse/expand)
+  let isCollapsed = false;
+  const toggleButton = panel.querySelector('#toggle-panel');
+  const currentElementInfo = panel.querySelector('#current-element-info');
+  const historySection = panel.querySelector('#history-section');
+  
+  toggleButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    
+    if (!isCollapsed) {
+      // Collapse panel to small handle
+      currentElementInfo.style.display = 'none';
+      historySection.style.display = 'none';
+      panel.style.width = '24px';
+      panel.style.height = '24px';
+      panel.style.borderRadius = '12px 0 0 12px';
+      panel.style.right = '0px';
+      panel.style.left = 'auto';
+      panel.style.top = '80px';
+      panel.style.transform = 'none';
+      panel.style.cursor = 'pointer';
+      
+      // Update header for collapsed state
+      const header = panel.querySelector('#panel-header');
+      header.style.padding = '2px';
+      header.style.margin = '-10px';
+      header.style.borderRadius = '12px 0 0 12px';
+      header.style.borderBottom = 'none';
+      header.style.justifyContent = 'center';
+      header.innerHTML = '<span style="font-size: 12px;">🔧</span>';
+      
+      toggleButton.innerHTML = '+';
+      toggleButton.style.display = 'none';
+      isCollapsed = true;
+      
+      // Store collapsed state
+      localStorage.setItem('clickScrapePanelCollapsed', 'true');
+      
+      // Make entire panel clickable to expand
+      panel.style.pointerEvents = 'auto';
+      
+    } else {
+      // Expand panel
+      expandPanel();
+    }
+    
+    return false;
+  });
+  
+  // Add click handler for collapsed panel
+  panel.addEventListener('click', (e) => {
+    if (isCollapsed && !e.target.closest('#current-element-info') && !e.target.closest('#history-section')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      expandPanel();
+      return false;
+    }
+  });
+  
+  function expandPanel() {
+    currentElementInfo.style.display = 'block';
+    historySection.style.display = 'block';
+    panel.style.width = '400px';
+    panel.style.height = 'auto';
+    panel.style.borderRadius = '5px';
+    panel.style.right = '10px';
+    panel.style.left = 'auto';  // 确保left属性被重置
+    panel.style.top = '10px';
+    panel.style.transform = 'none';
+    panel.style.cursor = 'move';
+    
+    // Restore header for expanded state
+    const header = panel.querySelector('#panel-header');
+    header.style.padding = '10px';
+    header.style.margin = '-10px -10px 10px -10px';
+    header.style.borderRadius = '5px 5px 0 0';
+    header.style.borderBottom = '1px solid rgba(255,255,255,0.2)';
+    header.style.justifyContent = 'space-between';
+    header.innerHTML = `
+      <span style="font-weight: bold;">🔧 Element Scraper Panel</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">⬍⬍ Drag to move</span>
+        <button id="toggle-panel" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px; cursor: pointer; font-weight: bold;" title="Collapse panel">−</button>
+      </div>
+    `;
+    
+    // Re-attach the toggle button event listener
+    const newToggleButton = panel.querySelector('#toggle-panel');
+    newToggleButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      if (!isCollapsed) {
+        // Collapse panel to small handle
+        currentElementInfo.style.display = 'none';
+        historySection.style.display = 'none';
+        panel.style.width = '24px';
+        panel.style.height = '24px';
+        panel.style.borderRadius = '12px 0 0 12px';
+        panel.style.right = '0px';
+        panel.style.left = 'auto';
+        panel.style.top = '80px';
+        panel.style.transform = 'none';
+        panel.style.cursor = 'pointer';
+        
+        // Update header for collapsed state
+        const header = panel.querySelector('#panel-header');
+        header.style.padding = '2px';
+        header.style.margin = '-10px';
+        header.style.borderRadius = '12px 0 0 12px';
+        header.style.borderBottom = 'none';
+        header.style.justifyContent = 'center';
+        header.innerHTML = '<span style="font-size: 12px;">🔧</span>';
+        
+        isCollapsed = true;
+        localStorage.setItem('clickScrapePanelCollapsed', 'true');
+        panel.style.pointerEvents = 'auto';
+        
+      } else {
+        expandPanel();
+      }
+      
+      return false;
+    });
+    
+    // Update state to expanded
+    isCollapsed = false;
+    
+    // Store expanded state
+    localStorage.setItem('clickScrapePanelCollapsed', 'false');
+  }
   
   // Add drag functionality
   let isDragging = false;
@@ -218,6 +357,15 @@ function createInfoPanel() {
     isOverPanel = false;
     window.clickScrapePanelHover = false;
   });
+  
+  // Restore panel state from localStorage
+  const savedCollapsedState = localStorage.getItem('clickScrapePanelCollapsed');
+  if (savedCollapsedState === 'true') {
+    // Simulate click on toggle button to collapse panel
+    setTimeout(() => {
+      toggleButton.click();
+    }, 100);
+  }
   
   return panel;
 }

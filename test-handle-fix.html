@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>把手Bug修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+            min-height: 200vh; /* 长页面用于测试滚动 */
+        }
+        
+        .test-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .bug-description {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .fix-description {
+            background: #d1edff;
+            border: 1px solid #74b9ff;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .test-steps {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .clickable-element {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .clickable-element:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h1>🐛 把手Bug修复测试页面</h1>
+        
+        <div class="bug-description">
+            <h3>🔍 Bug描述</h3>
+            <p><strong>问题：</strong>迷你把手第二次点击时会先跑到窗口上方，需要再点一次才会展开</p>
+            <p><strong>表现：</strong></p>
+            <ul>
+                <li>第一次点击折叠按钮 → 正常缩小为右侧把手</li>
+                <li>第一次点击把手 → ❌ 把手位置跳到窗口上方，但没有展开</li>
+                <li>第二次点击把手 → ✅ 面板才正常展开</li>
+            </ul>
+        </div>
+        
+        <div class="fix-description">
+            <h3>🔧 修复方案</h3>
+            <p><strong>根本原因：</strong></p>
+            <ul>
+                <li>展开时`left`属性没有被重置为`auto`</li>
+                <li>存在多个点击事件监听器冲突</li>
+                <li>事件冒泡处理不充分</li>
+            </ul>
+            <p><strong>修复措施：</strong></p>
+            <ul>
+                <li>在`expandPanel`函数中明确设置`panel.style.left = 'auto'`</li>
+                <li>在折叠状态的点击处理中添加`e.stopImmediatePropagation()`</li>
+                <li>添加`return false`确保事件完全停止</li>
+            </ul>
+        </div>
+        
+        <div class="test-steps">
+            <h3>✅ 测试步骤</h3>
+            <ol>
+                <li><strong>启动插件：</strong>点击浏览器插件图标</li>
+                <li><strong>折叠面板：</strong>点击信息面板右上角的"−"按钮</li>
+                <li><strong>验证把手：</strong>确认面板变成右侧小把手（24px×24px，位于right:0, top:80px）</li>
+                <li><strong>关键测试：</strong>点击小把手一次，观察是否直接展开（不应该有位置跳动）</li>
+                <li><strong>重复测试：</strong>多次折叠/展开，确认每次都正常</li>
+            </ol>
+        </div>
+        
+        <div class="test-card">
+            <h3>🎯 测试元素区域</h3>
+            <p>以下元素可用于测试插件的选择器生成功能：</p>
+            
+            <div class="clickable-element" id="test-element-1">
+                测试元素 1 - 带ID的div
+            </div>
+            
+            <div class="clickable-element" data-testid="test-element-2">
+                测试元素 2 - 带测试属性的div
+            </div>
+            
+            <div class="clickable-element">
+                测试元素 3 - 普通class的div
+            </div>
+            
+            <button class="clickable-element" style="border: none; width: 100%;">
+                测试按钮 - 可点击的button元素
+            </button>
+        </div>
+        
+        <div class="test-card">
+            <h3>🔄 预期行为</h3>
+            <p><strong>修复后的预期行为：</strong></p>
+            <ul>
+                <li>✅ 点击"−"按钮 → 面板立即缩小为右侧小把手</li>
+                <li>✅ 点击小把手 → 面板立即展开到正常大小，位置在右上角</li>
+                <li>✅ 无位置跳动，无需多次点击</li>
+                <li>✅ 状态持久保存，刷新页面后保持最后状态</li>
+            </ul>
+        </div>
+        
+        <div style="height: 800px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; text-align: center; border-radius: 10px; margin: 40px 0;">
+            <div>
+                <h3>📏 长内容测试区域</h3>
+                <p>用于测试把手在页面滚动时的位置稳定性</p>
+                <p>把手应该始终固定在 right: 0, top: 80px</p>
+            </div>
+        </div>
+        
+        <div class="test-card">
+            <h3>✨ 成功标准</h3>
+            <p>如果看到以下所有行为，则说明bug已修复：</p>
+            <ul>
+                <li>🎯 一次点击把手即可展开面板</li>
+                <li>🎯 展开时面板直接出现在右上角，无位置跳动</li>
+                <li>🎯 折叠/展开功能响应迅速</li>
+                <li>🎯 可以反复折叠/展开多次，每次都正常工作</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
