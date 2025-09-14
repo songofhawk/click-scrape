@@ -167,18 +167,43 @@ function loadAndDisplayHistory() {
               <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Tag</th>
               <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Content</th>
               <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Selector</th>
+              <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Quality</th>
               <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Time</th>
             </tr>
           </thead>
           <tbody>
-            ${history.map(item => `
-              <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
-                <td style="padding: 4px; font-weight: bold;">${item.tagName}</td>
-                <td style="padding: 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.text || '(no text)'}">${item.text ? item.text.substring(0, 20) + (item.text.length > 20 ? '...' : '') : '(no text)'}</td>
-                <td style="padding: 4px; font-family: monospace; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); navigator.clipboard.writeText('${item.selector}'); this.style.background='rgba(255,255,255,0.2)'; setTimeout(() => this.style.background='transparent', 1000);" title="Click to copy">${item.selector}</td>
-                <td style="padding: 4px; font-size: 9px; color: rgba(255,255,255,0.8);">${item.timestamp}</td>
-              </tr>
-            `).join('')}
+            ${history.map(item => {
+              // 检查选择器质量
+              let quality = '';
+              let qualityColor = 'rgba(255,255,255,0.8)';
+              
+              if (item.selector.startsWith('#')) {
+                quality = 'ID ✅🔒';
+                qualityColor = 'rgba(144, 238, 144, 0.8)'; // 绿色
+              } else if (item.selector.includes('data-test') || item.selector.includes('data-cy')) {
+                quality = 'Test ✅🔒';
+                qualityColor = 'rgba(144, 238, 144, 0.8)'; // 绿色
+              } else if (item.selector.startsWith('.') && !item.selector.includes('nth')) {
+                quality = 'Class ✅🔒';
+                qualityColor = 'rgba(255, 255, 0, 0.8)'; // 黄色
+              } else if (item.selector.includes('nth')) {
+                quality = 'Position ⚠️';
+                qualityColor = 'rgba(255, 165, 0, 0.8)'; // 橙色
+              } else {
+                quality = 'Other ⚠️';
+                qualityColor = 'rgba(255, 165, 0, 0.8)'; // 橙色
+              }
+              
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                  <td style="padding: 4px; font-weight: bold;">${item.tagName}</td>
+                  <td style="padding: 4px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.text || '(no text)'}">${item.text ? item.text.substring(0, 15) + (item.text.length > 15 ? '...' : '') : '(no text)'}</td>
+                  <td style="padding: 4px; font-family: monospace; cursor: pointer; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" onclick="event.preventDefault(); event.stopPropagation(); navigator.clipboard.writeText('${item.selector}'); this.style.background='rgba(255,255,255,0.2)'; setTimeout(() => this.style.background='transparent', 1000);" title="Click to copy: ${item.selector}">${item.selector}</td>
+                  <td style="padding: 4px; font-size: 9px; color: ${qualityColor}; font-weight: bold;">${quality}</td>
+                  <td style="padding: 4px; font-size: 9px; color: rgba(255,255,255,0.8);">${item.timestamp}</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       `;
@@ -189,166 +214,295 @@ function loadAndDisplayHistory() {
   }
 }
 
-// Function to generate multiple CSS selectors for an element
+// Function to check if a selector is unique on the page
+function isSelectorUnique(selector) {
+  try {
+    const elements = document.querySelectorAll(selector);
+    return elements.length === 1;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Function to generate stable and unique CSS selectors for crawler use
 function generateMultipleSelectors(el) {
   const selectors = [];
   
-  // 1. ID选择器（最优先）
-  if (el.id) {
-    selectors.push({
-      type: 'ID',
-      selector: `#${el.id}`,
-      description: '通过ID选择（最精确）',
-      priority: 1
-    });
+  // 1. ID选择器（最优先，通常唯一）
+  if (el.id && el.id.trim()) {
+    const idSelector = `#${CSS.escape(el.id)}`;
+    if (isSelectorUnique(idSelector)) {
+      selectors.push({
+        type: 'ID',
+        selector: idSelector,
+        description: '通过ID选择（最稳定，推荐用于爬虫）',
+        priority: 1,
+        unique: true,
+        stable: true
+      });
+    }
   }
   
-  // 2. Class选择器
+  // 2. 测试相关属性选择器（通常用于自动化测试，很稳定）
+  const testAttributes = ['data-testid', 'data-test', 'data-cy', 'data-test-id', 'data-automation-id'];
+  testAttributes.forEach(attr => {
+    const value = el.getAttribute(attr);
+    if (value && value.trim()) {
+      const selector = `[${attr}="${CSS.escape(value)}"]`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          type: 'Test Attribute',
+          selector: selector,
+          description: `通过测试属性${attr}选择（推荐用于爬虫）`,
+          priority: 2,
+          unique: true,
+          stable: true
+        });
+      }
+    }
+  });
+  
+  // 3. 其他重要属性选择器
+  const importantAttributes = ['name', 'aria-label', 'title', 'alt', 'href', 'src'];
+  importantAttributes.forEach(attr => {
+    const value = el.getAttribute(attr);
+    if (value && value.trim()) {
+      const selector = `[${attr}="${CSS.escape(value)}"]`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          type: 'Attribute',
+          selector: selector,
+          description: `通过${attr}属性选择`,
+          priority: 3,
+          unique: true,
+          stable: true
+        });
+      }
+    }
+  });
+  
+  // 4. 稳定的class选择器（检查唯一性）
   if (el.className && typeof el.className === 'string') {
     const classes = el.className.trim().split(/\s+/).filter(c => c.length > 0);
-    if (classes.length > 0) {
-      // 单个class
-      classes.forEach(cls => {
+    
+    // 尝试单个class
+    classes.forEach(cls => {
+      const selector = `.${CSS.escape(cls)}`;
+      if (isSelectorUnique(selector)) {
         selectors.push({
-          type: 'Class',
-          selector: `.${cls}`,
-          description: `通过class "${cls}" 选择`,
-          priority: 2
+          type: 'Unique Class',
+          selector: selector,
+          description: `通过唯一class "${cls}" 选择`,
+          priority: 4,
+          unique: true,
+          stable: true
         });
-      });
-      
-      // 多个class组合
-      if (classes.length > 1) {
+      }
+    });
+    
+    // 尝试多个class组合
+    if (classes.length > 1) {
+      const multiClassSelector = classes.map(cls => `.${CSS.escape(cls)}`).join('');
+      if (isSelectorUnique(multiClassSelector)) {
         selectors.push({
           type: 'Multiple Classes',
-          selector: `.${classes.join('.')}`,
+          selector: multiClassSelector,
           description: `通过多个class组合选择`,
-          priority: 2
+          priority: 4,
+          unique: true,
+          stable: true
         });
       }
     }
   }
   
-  // 3. 属性选择器
-  const attributes = ['data-testid', 'data-test', 'data-cy', 'name', 'type', 'value', 'href', 'src', 'alt', 'title'];
-  attributes.forEach(attr => {
-    const value = el.getAttribute(attr);
-    if (value) {
-      selectors.push({
-        type: 'Attribute',
-        selector: `[${attr}="${value}"]`,
-        description: `通过${attr}属性选择`,
-        priority: 3
-      });
-    }
+  // 5. 基于父元素的稳定选择器
+  const parentSelectors = generateStableParentSelectors(el);
+  parentSelectors.forEach((selector, index) => {
+    selectors.push({
+      type: 'Parent-based',
+      selector: selector.selector,
+      description: selector.description,
+      priority: 5 + index,
+      unique: selector.unique,
+      stable: selector.stable
+    });
   });
   
-  // 4. 标签选择器
-  selectors.push({
-    type: 'Tag',
-    selector: el.tagName.toLowerCase(),
-    description: `通过标签名选择（${el.tagName.toLowerCase()}）`,
-    priority: 4
-  });
-  
-  // 5. 文本内容选择器（如果文本内容较短且唯一）
+  // 6. 基于文本内容的唯一选择器（如果文本较短且唯一）
   const text = el.textContent.trim();
-  if (text && text.length > 0 && text.length < 50 && !text.includes('\n')) {
+  if (text && text.length > 0 && text.length < 30 && !text.includes('\n') && !text.includes('  ')) {
+    const textSelector = `${el.tagName.toLowerCase()}:contains("${text}")`;
+    // 注意：:contains不是标准CSS，但某些爬虫框架支持
     selectors.push({
       type: 'Text Content',
-      selector: `${el.tagName.toLowerCase()}:contains("${text}")`,
-      description: `通过文本内容选择（注意：:contains不是标准CSS）`,
-      priority: 5
+      selector: textSelector,
+      description: `通过文本内容选择（非标准CSS，部分爬虫支持）`,
+      priority: 8,
+      unique: false,
+      stable: false
     });
   }
   
-  // 6. 层级选择器（从当前元素到根元素）
-  const pathSelectors = generatePathSelectors(el);
-  pathSelectors.forEach((path, index) => {
+  // 7. 备选方案：基于位置的相对选择器
+  const fallbackSelectors = generateFallbackSelectors(el);
+  fallbackSelectors.forEach((selector, index) => {
     selectors.push({
-      type: 'Path',
-      selector: path,
-      description: `层级选择器（${index + 1}级）`,
-      priority: 6 + index
+      type: 'Fallback',
+      selector: selector.selector,
+      description: selector.description,
+      priority: 9 + index,
+      unique: selector.unique,
+      stable: false
     });
   });
   
-  // 7. 父级选择器（如果父元素有ID或class）
-  let parent = el.parentElement;
-  let level = 1;
-  while (parent && level <= 3) {
-    if (parent.id) {
-      selectors.push({
-        type: 'Parent ID',
-        selector: `#${parent.id} > ${el.tagName.toLowerCase()}`,
-        description: `通过父元素ID选择（${level}级父元素）`,
-        priority: 7 + level
-      });
-    }
-    if (parent.className && typeof parent.className === 'string') {
-      const parentClasses = parent.className.trim().split(/\s+/).filter(c => c.length > 0);
-      if (parentClasses.length > 0) {
-        selectors.push({
-          type: 'Parent Class',
-          selector: `.${parentClasses[0]} > ${el.tagName.toLowerCase()}`,
-          description: `通过父元素class选择（${level}级父元素）`,
-          priority: 7 + level
-        });
-      }
-    }
-    parent = parent.parentElement;
-    level++;
-  }
-  
-  // 按优先级排序
-  selectors.sort((a, b) => a.priority - b.priority);
+  // 按优先级排序，优先显示唯一且稳定的选择器
+  selectors.sort((a, b) => {
+    if (a.unique && !b.unique) return -1;
+    if (!a.unique && b.unique) return 1;
+    if (a.stable && !b.stable) return -1;
+    if (!a.stable && b.stable) return 1;
+    return a.priority - b.priority;
+  });
   
   return selectors;
 }
 
-// 生成层级选择器
-function generatePathSelectors(el) {
-  const paths = [];
-  let current = el;
-  let path = [];
+// 生成基于父元素的稳定选择器
+function generateStableParentSelectors(el) {
+  const selectors = [];
+  let parent = el.parentElement;
+  let level = 1;
   
-  while (current && current.nodeType === Node.ELEMENT_NODE && path.length < 5) {
+  while (parent && level <= 3) {
+    // 如果父元素有ID，使用父元素ID + 子元素标签
+    if (parent.id && parent.id.trim()) {
+      const selector = `#${CSS.escape(parent.id)} > ${el.tagName.toLowerCase()}`;
+      if (isSelectorUnique(selector)) {
+        selectors.push({
+          selector: selector,
+          description: `通过父元素ID选择（${level}级父元素）`,
+          unique: true,
+          stable: true
+        });
+      }
+    }
+    
+    // 如果父元素有稳定的class，使用父元素class + 子元素标签
+    if (parent.className && typeof parent.className === 'string') {
+      const parentClasses = parent.className.trim().split(/\s+/).filter(c => c.length > 0);
+      for (const cls of parentClasses) {
+        const selector = `.${CSS.escape(cls)} > ${el.tagName.toLowerCase()}`;
+        if (isSelectorUnique(selector)) {
+          selectors.push({
+            selector: selector,
+            description: `通过父元素class选择（${level}级父元素）`,
+            unique: true,
+            stable: true
+          });
+          break; // 找到一个稳定的就够了
+        }
+      }
+    }
+    
+    // 如果父元素有测试属性，使用测试属性 + 子元素标签
+    const testAttributes = ['data-testid', 'data-test', 'data-cy'];
+    for (const attr of testAttributes) {
+      const value = parent.getAttribute(attr);
+      if (value && value.trim()) {
+        const selector = `[${attr}="${CSS.escape(value)}"] > ${el.tagName.toLowerCase()}`;
+        if (isSelectorUnique(selector)) {
+          selectors.push({
+            selector: selector,
+            description: `通过父元素测试属性选择（${level}级父元素）`,
+            unique: true,
+            stable: true
+          });
+          break;
+        }
+      }
+    }
+    
+    parent = parent.parentElement;
+    level++;
+  }
+  
+  return selectors;
+}
+
+// 生成备选选择器（当没有稳定选择器时使用）
+function generateFallbackSelectors(el) {
+  const selectors = [];
+  
+  // 基于标签名和文本内容的组合
+  const text = el.textContent.trim();
+  if (text && text.length > 0 && text.length < 50) {
+    const textSelector = `${el.tagName.toLowerCase()}:contains("${text}")`;
+    selectors.push({
+      selector: textSelector,
+      description: `基于标签和文本内容（非标准CSS）`,
+      unique: false,
+      stable: false
+    });
+  }
+  
+  // 基于标签名和属性的组合
+  const attributes = ['type', 'role', 'aria-label'];
+  for (const attr of attributes) {
+    const value = el.getAttribute(attr);
+    if (value && value.trim()) {
+      const selector = `${el.tagName.toLowerCase()}[${attr}="${CSS.escape(value)}"]`;
+      selectors.push({
+        selector: selector,
+        description: `基于标签和${attr}属性`,
+        unique: false,
+        stable: true
+      });
+    }
+  }
+  
+  // 基于位置的相对选择器（最后的选择）
+  const positionSelector = generatePositionSelector(el);
+  if (positionSelector) {
+    selectors.push({
+      selector: positionSelector,
+      description: `基于位置的选择器（不稳定，不推荐）`,
+      unique: false,
+      stable: false
+    });
+  }
+  
+  return selectors;
+}
+
+// 生成基于位置的选择器（不推荐，但作为最后备选）
+function generatePositionSelector(el) {
+  const path = [];
+  let current = el;
+  
+  while (current && current.nodeType === Node.ELEMENT_NODE && path.length < 4) {
     let selector = current.tagName.toLowerCase();
     
-    if (current.id) {
-      selector += '#' + current.id;
-      path.unshift(selector);
-      break;
-    } else if (current.className && typeof current.className === 'string') {
-      const classes = current.className.trim().split(/\s+/).filter(c => c.length > 0);
-      if (classes.length > 0) {
-        selector += '.' + classes[0];
+    // 计算在同类型兄弟元素中的位置
+    let position = 1;
+    let sibling = current.previousElementSibling;
+    while (sibling) {
+      if (sibling.tagName === current.tagName) {
+        position++;
       }
-    } else {
-      // 添加nth-child
-      let nth = 1;
-      let sibling = current.previousElementSibling;
-      while (sibling) {
-        if (sibling.tagName === current.tagName) {
-          nth++;
-        }
-        sibling = sibling.previousElementSibling;
-      }
-      if (nth > 1) {
-        selector += `:nth-of-type(${nth})`;
-      }
+      sibling = sibling.previousElementSibling;
+    }
+    
+    if (position > 1) {
+      selector += `:nth-of-type(${position})`;
     }
     
     path.unshift(selector);
     current = current.parentElement;
   }
   
-  // 生成不同长度的路径
-  for (let i = 1; i <= Math.min(path.length, 4); i++) {
-    paths.push(path.slice(-i).join(' > '));
-  }
-  
-  return paths;
+  return path.length > 1 ? path.join(' > ') : null;
 }
 
 // Get element position and size
@@ -378,11 +532,19 @@ function highlightElement(element, highlightBox, infoPanel) {
   // Update current element info
   const elementDetails = infoPanel.querySelector('#element-details');
   if (elementDetails) {
+    const bestSelector = selectors[0];
+    const selectorInfo = bestSelector ? 
+      `${bestSelector.selector} ${bestSelector.unique ? '✅' : '⚠️'} ${bestSelector.stable ? '🔒' : '⚠️'}` : 
+      'N/A';
+    
     elementDetails.innerHTML = `
       <div style="margin-bottom: 3px;"><strong>Tag:</strong> ${element.tagName.toLowerCase()}</div>
       <div style="margin-bottom: 3px;"><strong>Text:</strong> ${text}${element.textContent.length > 100 ? '...' : ''}</div>
-      <div style="margin-bottom: 3px;"><strong>Best Selector:</strong> ${selectors[0] ? selectors[0].selector : 'N/A'}</div>
-      <div style="margin-top: 5px; font-size: 10px; opacity: 0.8;">Click to select • ESC to cancel</div>
+      <div style="margin-bottom: 3px;"><strong>Best Selector:</strong> ${selectorInfo}</div>
+      <div style="margin-top: 5px; font-size: 10px; opacity: 0.8;">
+        Click to select • ESC to cancel<br>
+        ✅ Unique • 🔒 Stable • ⚠️ Not recommended
+      </div>
     `;
   }
   
@@ -545,4 +707,5 @@ if (!window.clickScrapeInjected) {
   
   console.log('Click & Scrape content script loaded');
 }
+  
   
