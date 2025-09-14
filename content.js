@@ -238,10 +238,11 @@ function showCopySuccessMessage(selector) {
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0, 255, 0, 0.9);
+      background: rgba(255,255,255,0.25);
       color: white;
       padding: 8px 12px;
       border-radius: 4px;
+      border: 1px solid rgba(144, 238, 144, 0.6);
       font-size: 11px;
       font-weight: bold;
       z-index: 1000002;
@@ -251,6 +252,7 @@ function showCopySuccessMessage(selector) {
       max-width: 300px;
       overflow: hidden;
       text-overflow: ellipsis;
+      backdrop-filter: blur(4px);
     `;
     infoPanel.appendChild(messageContainer);
   }
