@@ -769,6 +769,16 @@ function startElementSelection() {
       // Save to localStorage history
       saveToHistory(elementData);
       
+      // Auto-copy best selector to clipboard
+      const bestSelector = selectors[0] ? selectors[0].selector : '';
+      if (bestSelector) {
+        navigator.clipboard.writeText(bestSelector).then(() => {
+          console.log('Selector auto-copied to clipboard:', bestSelector);
+        }).catch(err => {
+          console.error('Failed to auto-copy selector to clipboard:', err);
+        });
+      }
+      
       // Send data to background script
       try {
         chrome.runtime.sendMessage({
@@ -788,6 +798,7 @@ function startElementSelection() {
           <div style="margin-bottom: 3px;"><strong>Tag:</strong> ${currentElement.tagName.toLowerCase()}</div>
           <div style="margin-bottom: 3px;"><strong>Text:</strong> ${elementText.substring(0, 50)}${elementText.length > 50 ? '...' : ''}</div>
           <div style="margin-bottom: 3px;"><strong>Best Selector:</strong> ${selectors[0] ? selectors[0].selector : 'N/A'}</div>
+          <div style="color: #87CEEB; font-size: 10px; margin-bottom: 3px;">📋 Selector auto-copied to clipboard!</div>
           <div style="margin-top: 5px; font-size: 10px; opacity: 0.8;">Continue selecting or press ESC to exit</div>
         `;
         
