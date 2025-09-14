@@ -1,0 +1,14 @@
+{
+    "manifest_version": 3,
+    "name": "Click & Scrape",
+    "version": "1.0",
+    "description": "Scrape data by clicking on an element in the page.",
+    "permissions": ["activeTab", "scripting", "storage"],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
+  
