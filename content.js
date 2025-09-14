@@ -58,6 +58,7 @@ function createInfoPanel() {
     font-family: sans-serif;
     font-size: 12px;
     z-index: 1000001;
+    width: 400px;
     max-width: 400px;
     max-height: 600px;
     display: none;
@@ -70,7 +71,7 @@ function createInfoPanel() {
       <div style="font-weight: bold; margin-bottom: 5px;">🎯 Current Element</div>
       <div id="element-details"></div>
     </div>
-    <div id="history-section" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">
+    <div id="history-section" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; width: 100%; min-height: 200px; display: block;">
       <div style="font-weight: bold; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
         <span>📝 Click History</span>
         <div>
@@ -78,7 +79,7 @@ function createInfoPanel() {
           <button id="close-panel" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; cursor: pointer;">Close</button>
         </div>
       </div>
-      <div id="history-content" style="max-height: 300px; overflow-y: auto;">
+      <div id="history-content" style="width: 100%; min-height: 100px; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.1); display: block;">
         <div class="empty-state" style="text-align: center; color: rgba(255,255,255,0.7); padding: 10px; font-style: italic; font-size: 11px;">
           No elements clicked yet
         </div>
@@ -160,8 +161,8 @@ function loadAndDisplayHistory() {
     if (history.length === 0) {
       historyContent.innerHTML = '<div class="empty-state" style="text-align: center; color: rgba(255,255,255,0.7); padding: 10px; font-style: italic; font-size: 11px;">No elements clicked yet</div>';
     } else {
-      historyContent.innerHTML = `
-        <table style="width: 100%; font-size: 10px; border-collapse: collapse;">
+      const htmlContent = `
+        <table style="width: 100%; font-size: 10px; border-collapse: collapse; color: white; background: transparent; table-layout: fixed;">
           <thead>
             <tr style="background: rgba(255,255,255,0.1);">
               <th style="padding: 4px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.3);">Tag</th>
@@ -207,6 +208,8 @@ function loadAndDisplayHistory() {
           </tbody>
         </table>
       `;
+      
+      historyContent.innerHTML = htmlContent;
     }
   } catch (error) {
     console.error('Error loading history:', error);
@@ -548,9 +551,8 @@ function highlightElement(element, highlightBox, infoPanel) {
     `;
   }
   
-  // Show info panel and load history
+  // Show info panel
   infoPanel.style.display = 'block';
-  loadAndDisplayHistory();
 }
 
 // Hide highlight
@@ -583,7 +585,11 @@ function startElementSelection() {
   // Show overlay
   overlay.style.display = 'block';
   infoPanel.style.display = 'block';
-  loadAndDisplayHistory();
+  
+  // Load history with a small delay to ensure DOM is ready
+  setTimeout(() => {
+    loadAndDisplayHistory();
+  }, 10);
 
   // Mouse move handler
   window.clickScrapeMouseMove = function(event) {
