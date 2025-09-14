@@ -64,9 +64,18 @@ function createInfoPanel() {
     display: none;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     overflow: hidden;
+    cursor: move;
+    user-select: none;
   `;
   
+  // Add data attribute to mark this as the info panel
+  panel.setAttribute('data-click-scrape-panel', 'true');
+  
   panel.innerHTML = `
+    <div id="panel-header" style="cursor: move; padding: 5px 0; margin: -10px -10px 10px -10px; padding: 10px; background: rgba(255,255,255,0.15); border-radius: 5px 5px 0 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2);">
+      <span style="font-weight: bold;">🔧 Element Scraper Panel</span>
+      <span style="font-size: 10px; opacity: 0.8; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px;">⬍⬍ Drag to move</span>
+    </div>
     <div id="current-element-info" style="margin-bottom: 10px;">
       <div style="font-weight: bold; margin-bottom: 5px;">🎯 Current Element</div>
       <div id="element-details"></div>
@@ -88,6 +97,11 @@ function createInfoPanel() {
   `;
   
   document.body.appendChild(panel);
+  
+  // Prevent click-through on the entire panel
+  panel.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
   
   // Add clear history button functionality
   panel.querySelector('#clear-history').addEventListener('click', (e) => {
@@ -119,6 +133,75 @@ function createInfoPanel() {
     document.removeEventListener('keydown', window.clickScrapeKeyDown);
     window.clickScrapeActive = false;
     return false;
+  });
+  
+  // Add drag functionality
+  let isDragging = false;
+  let currentX = 0;
+  let currentY = 0;
+  let initialX = 0;
+  let initialY = 0;
+  let xOffset = 0;
+  let yOffset = 0;
+  
+  const header = panel.querySelector('#panel-header');
+  
+  header.addEventListener('mousedown', (e) => {
+    initialX = e.clientX - xOffset;
+    initialY = e.clientY - yOffset;
+    
+    if (e.target === header || header.contains(e.target)) {
+      isDragging = true;
+      panel.style.cursor = 'grabbing';
+    }
+  });
+  
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      e.preventDefault();
+      currentX = e.clientX - initialX;
+      currentY = e.clientY - initialY;
+      
+      xOffset = currentX;
+      yOffset = currentY;
+      
+      // Ensure panel stays within viewport
+      const rect = panel.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+      
+      currentX = Math.max(0, Math.min(currentX, maxX));
+      currentY = Math.max(0, Math.min(currentY, maxY));
+      
+      panel.style.left = currentX + 'px';
+      panel.style.top = currentY + 'px';
+      panel.style.right = 'auto'; // Override initial right positioning
+    }
+  });
+  
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      panel.style.cursor = 'move';
+    }
+  });
+  
+  // Add hover tracking to disable element capturing when over panel
+  let isOverPanel = false;
+  
+  panel.addEventListener('mouseenter', () => {
+    isOverPanel = true;
+    window.clickScrapePanelHover = true;
+    // Hide highlight box when hovering over panel
+    const highlightBox = document.getElementById('click-scrape-highlight');
+    if (highlightBox) {
+      highlightBox.style.display = 'none';
+    }
+  });
+  
+  panel.addEventListener('mouseleave', () => {
+    isOverPanel = false;
+    window.clickScrapePanelHover = false;
   });
   
   return panel;
@@ -595,7 +678,18 @@ function startElementSelection() {
   window.clickScrapeMouseMove = function(event) {
     if (!window.clickScrapeActive) return;
     
+    // Skip element detection if mouse is over the info panel
+    if (window.clickScrapePanelHover) {
+      return;
+    }
+    
     const element = document.elementFromPoint(event.clientX, event.clientY);
+    
+    // Double-check that the element is not part of the info panel
+    if (element && element.closest('#click-scrape-info')) {
+      return;
+    }
+    
     if (element && element !== currentElement) {
       currentElement = element;
       highlightElement(element, highlightBox, infoPanel);
@@ -605,6 +699,11 @@ function startElementSelection() {
   // Click handler
   window.clickScrapeClick = function(event) {
     if (!window.clickScrapeActive) return;
+    
+    // Skip if mouse is over panel or click is on panel
+    if (window.clickScrapePanelHover) {
+      return;
+    }
     
     // Check if the click is on a button in the info panel
     const target = event.target;
@@ -674,6 +773,7 @@ function startElementSelection() {
   // Cleanup function
   function cleanup() {
     window.clickScrapeActive = false;
+    window.clickScrapePanelHover = false; // Reset panel hover state
     overlay.style.display = 'none';
     hideHighlight(highlightBox, infoPanel);
     
