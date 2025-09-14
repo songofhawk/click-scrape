@@ -90,16 +90,21 @@ function createInfoPanel() {
   
   // Add clear history button functionality
   panel.querySelector('#clear-history').addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     if (confirm('Clear all click history?')) {
       localStorage.removeItem('clickScrapeHistory');
       loadAndDisplayHistory();
     }
+    return false;
   });
   
   // Add close panel button functionality
   panel.querySelector('#close-panel').addEventListener('click', (e) => {
+    e.preventDefault();
     e.stopPropagation();
+    e.stopImmediatePropagation();
     // Hide the panel and stop selection mode
     panel.style.display = 'none';
     // Remove any existing selection mode
@@ -111,6 +116,8 @@ function createInfoPanel() {
     document.removeEventListener('mousemove', window.clickScrapeMouseMove);
     document.removeEventListener('click', window.clickScrapeClick, true);
     document.removeEventListener('keydown', window.clickScrapeKeyDown);
+    window.clickScrapeActive = false;
+    return false;
   });
   
   return panel;
@@ -168,7 +175,7 @@ function loadAndDisplayHistory() {
               <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
                 <td style="padding: 4px; font-weight: bold;">${item.tagName}</td>
                 <td style="padding: 4px; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.text || '(no text)'}">${item.text ? item.text.substring(0, 20) + (item.text.length > 20 ? '...' : '') : '(no text)'}</td>
-                <td style="padding: 4px; font-family: monospace; cursor: pointer;" onclick="navigator.clipboard.writeText('${item.selector}'); this.style.background='rgba(255,255,255,0.2)'; setTimeout(() => this.style.background='transparent', 1000);" title="Click to copy">${item.selector}</td>
+                <td style="padding: 4px; font-family: monospace; cursor: pointer;" onclick="event.preventDefault(); event.stopPropagation(); navigator.clipboard.writeText('${item.selector}'); this.style.background='rgba(255,255,255,0.2)'; setTimeout(() => this.style.background='transparent', 1000);" title="Click to copy">${item.selector}</td>
                 <td style="padding: 4px; font-size: 9px; color: rgba(255,255,255,0.8);">${item.timestamp}</td>
               </tr>
             `).join('')}
@@ -430,6 +437,13 @@ function startElementSelection() {
   // Click handler
   window.clickScrapeClick = function(event) {
     if (!window.clickScrapeActive) return;
+    
+    // Check if the click is on a button in the info panel
+    const target = event.target;
+    if (target && (target.id === 'clear-history' || target.id === 'close-panel' || target.closest('#click-scrape-info'))) {
+      // Don't handle clicks on panel buttons
+      return;
+    }
     
     event.preventDefault();
     event.stopPropagation();
