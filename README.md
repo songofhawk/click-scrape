@@ -1,238 +1,227 @@
-# Click & Scrape - Chrome 扩展
+# Click & Scrape - Chrome Extension
 
-一个智能的 Chrome 浏览器扩展，用于可视化选择网页元素并生成最适合的 CSS 选择器。特别针对列表、表格等相似元素进行了算法优化。
+An intelligent Chrome browser extension for visual web element selection and optimal CSS selector generation. Specially optimized with algorithms for lists, tables, and similar elements.
 
-## 🆕 V1.1 算法重大改进
+**中文文档**: [README_CN.md](README_CN.md)
 
-### 列表元素智能识别
-当选中的元素是列表项、表格行或其他相似的兄弟元素时，插件现在会：
+## Features
 
-1. **自动检测相似性**：识别元素是否在相似的兄弟元素列表中
-2. **优先父元素+索引**：使用如 `#list-container > li:nth-of-type(3)` 的稳定选择器
-3. **避免内容依赖**：降低基于文本内容的选择器优先级（因为内容最易变）
+- 🎯 **Smart Visual Selection**: Mouse hover highlighting of elements
+- 🔧 **List Element Optimization**: Special handling for similar sibling elements ⭐ **New**
+- 📝 **Multiple Selector Generation**: Auto-generates various types of CSS selectors
+- 📊 **History Table**: Records all selected element info with quality indicators
+- 💾 **Persistent Storage**: Uses localStorage to save history
+- 🚀 **One-Click Launch**: Click extension icon to start selection mode
+- 📋 **One-Click Copy**: Click selector code to copy to clipboard
 
-### 改进前后对比
+## Installation
 
-**场景：选择商品列表中的第二个商品**
-```html
-<ul id="product-list">
-  <li>iPhone 15 Pro - 顶级旗舰手机</li>
-  <li>MacBook Air - 轻薄笔记本电脑</li>  <!-- 选中这个 -->
-  <li>iPad Pro - 专业平板电脑</li>
-</ul>
-```
+1. Open Chrome browser and go to `chrome://extensions`
+2. Turn on **Developer mode** toggle in the top right
+3. Click **Load unpacked** button in the top left
+4. Select this project folder
 
-| 改进前 | 改进后 |
-|--------|--------|
-| `li:contains("MacBook Air...")` | `#product-list > li:nth-of-type(2)` |
-| ❌ 内容变化即失效 | ✅ 基于结构，更稳定 |
-| ❌ 冗长难读 | ✅ 简洁明了 |
+After installation, you'll see the "Click & Scrape" extension icon in your browser toolbar.
 
-## 功能特点
+## Usage
 
-- 🎯 **智能可视化选择**：鼠标悬停高亮显示元素
-- 🔧 **列表元素优化**：针对相似兄弟元素的特殊处理 ⭐ **新增**
-- 📝 **多选择器生成**：自动生成多种类型的 CSS 选择器
-- 📊 **历史记录表格**：记录所有选中的元素信息，带选择器质量指示
-- 💾 **持久化存储**：使用 localStorage 保存历史记录
-- 🚀 **一键启动**：点击扩展图标直接开启选择模式
-- 📋 **一键复制**：点击选择器代码即可复制到剪贴板
+### Basic Operation
 
-## 安装方法
+1. **Start Selection Mode**
+   - Click the "Click & Scrape" extension icon in your browser toolbar
+   - Extension will directly enter element selection mode (no popup required)
 
-1. 打开 Chrome 浏览器，在地址栏输入 `chrome://extensions`
-2. 打开右上角的 **开发者模式** 开关
-3. 点击左上角的 **加载已解压的扩展程序** 按钮
-4. 选择本项目的文件夹
+2. **Select Elements**
+   - Move mouse over target elements, they will be highlighted with blue border
+   - A blue information panel appears in the top right, showing current hover element info in real-time
+   - Click target element to complete selection
 
-安装完成后，你会在浏览器工具栏看到 "Click & Scrape" 扩展图标。
+3. **View Results**
+   - After selecting element, information panel automatically updates
+   - Shows current element info and history table
 
-## 使用方法
+4. **Exit Selection Mode**
+   - Press `ESC` key to exit selection mode
 
-### 基本操作
+### Information Panel Features
 
-1. **启动选择模式**
-   - 点击浏览器工具栏中的 "Click & Scrape" 扩展图标
-   - 扩展会直接开启元素选择模式（无需弹窗）
+The information panel has two sections:
 
-2. **选择元素**
-   - 移动鼠标到目标元素上，元素会被蓝色边框高亮显示
-   - 右上角会显示一个蓝色信息面板，实时显示当前悬停元素的信息
-   - 点击目标元素完成选择
+#### Current Element Info
+- **Tag**: HTML tag name
+- **Text**: Element text content
+- **Best Selector**: Recommended optimal CSS selector
 
-3. **查看结果**
-   - 选中元素后，信息面板会自动更新
-   - 显示当前元素信息和历史记录表格
+#### History Table
+Contains the following columns:
+- **Tag**: Element tag name
+- **Content**: Element text content (truncated display)
+- **Selector**: CSS selector (click to copy)
+- **Quality**: Selector quality indicators
+- **Time**: Selection timestamp
 
-4. **退出选择模式**
-   - 按 `ESC` 键退出选择模式
+### Advanced Features
 
-### 信息面板功能
+1. **Copy Selectors**
+   - Click selector code in history table to copy to clipboard
+   - Visual feedback on copy (background color change)
 
-信息面板分为两个部分：
+2. **Clear History**
+   - Click "Clear" button in information panel
+   - Confirm to clear all history
 
-#### 当前元素信息
-- **Tag**：HTML 标签名
-- **Text**：元素文本内容
-- **Best Selector**：推荐的最佳 CSS 选择器
+3. **Persistent Storage**
+   - History automatically saved to localStorage
+   - History remains after browser restart
+   - Saves up to 20 history entries
 
-#### 历史记录表格
-包含以下列：
-- **Tag**：元素标签名
-- **Content**：元素文本内容（截断显示）
-- **Selector**：CSS 选择器（点击可复制）
-- **Time**：选择时间
+## Generated Selector Types
 
-### 高级功能
+The extension intelligently generates multiple types of CSS selectors, adjusting priority based on element environment:
 
-1. **复制选择器**
-   - 点击历史记录表格中的选择器代码即可复制到剪贴板
-   - 复制时会有视觉反馈（背景色变化）
+### 🎯 General Priority (Independent Elements)
+1. **ID Selector**: `#elementId` - Most precise and stable
+2. **Test Attribute Selector**: `[data-testid="value"]` - Test-friendly
+3. **Important Attribute Selector**: `[name="value"]`, `[aria-label="value"]`, etc.
+4. **Class Selector**: `.className` - Single or multiple class combinations
+5. **Parent-based Selector**: `#parent > div`
+6. **Text Content Selector**: `div:contains("text")` (non-standard CSS)
 
-2. **清除历史记录**
-   - 点击信息面板中的 "Clear" 按钮
-   - 确认后清除所有历史记录
+### 🔧 List Element Special Priority ⭐ **New**
+When detecting elements in similar sibling lists:
+1. **ID Selector**: `#elementId` - Still highest priority
+2. **Parent+Index Selector**: `#parent > li:nth-of-type(2)` - 🚀 **Prioritized**
+3. **Test Attribute Selector**: Reduced priority
+4. **Other Attribute/Class Selectors**: Reduced priority
+5. **Text Content Selector**: Significantly downgraded (as content in lists is most volatile)
 
-3. **持久化存储**
-   - 历史记录自动保存到 localStorage
-   - 重新启动浏览器后历史记录仍然保留
-   - 最多保存 20 条历史记录
+### 📊 Selector Quality Indicators
+History table displays quality markers:
+- ✅🔒 **ID/Test Attributes**: Most stable, recommended for production
+- ✅🔒 **Class Selectors**: Relatively stable
+- ⚠️ **Position Index**: May be affected by structural changes
+- ⚠️ **Others**: Use with caution
 
-## 生成的选择器类型
+### 🎯 Applicable List Types
+- `<ul>`, `<ol>` list items
+- `<table>` table rows/cells
+- Product cards/grid layouts
+- Navigation menu items
+- Any structurally similar sibling elements
 
-扩展会智能生成多种类型的 CSS 选择器，根据元素所在环境调整优先级：
+## Technical Features
 
-### 🎯 通用优先级（独立元素）
-1. **ID 选择器**：`#elementId` - 最精确、最稳定
-2. **测试属性选择器**：`[data-testid="value"]` - 测试友好
-3. **重要属性选择器**：`[name="value"]`、`[aria-label="value"]` 等
-4. **Class 选择器**：`.className` - 单个或多个 class 组合
-5. **基于父元素的选择器**：`#parent > div`
-6. **文本内容选择器**：`div:contains("text")` (非标准CSS)
+- **Popup-free Design**: Click extension icon to start directly, cleaner operation
+- **Real-time Preview**: Real-time element info display on mouse hover
+- **Smart Selectors**: Auto-generates multiple selector types for different use cases
+- **Tabular History**: Clear history table with information at a glance
+- **Local Storage**: Uses localStorage for data persistence
 
-### 🔧 列表元素专用优先级 ⭐ **新增**
-当检测到元素在相似兄弟列表中时：
-1. **ID 选择器**：`#elementId` - 仍然最高优先级
-2. **父元素+索引选择器**：`#parent > li:nth-of-type(2)` - 🚀 **优先推荐**
-3. **测试属性选择器**：优先级降低
-4. **其他属性/Class 选择器**：优先级降低
-5. **文本内容选择器**：大幅降级（因为列表中内容最易变）
+## Use Cases
 
-### 📊 选择器质量指示
-历史记录表格中会显示质量标识：
-- ✅🔒 **ID/测试属性**：最稳定，推荐用于生产
-- ✅🔒 **Class选择器**：较稳定
-- ⚠️ **位置索引**：结构变化可能影响
-- ⚠️ **其他**：需要谨慎使用
+- **Frontend Development**: Quickly get CSS selectors for page elements
+- **Automated Testing**: Generate reliable selectors for test scripts
+- **Web Analysis**: Analyze page structure and element relationships
+- **Learning & Research**: Understand different selector generation rules
 
-### 🎯 适用的列表类型
-- `<ul>`, `<ol>` 列表项
-- `<table>` 表格行/单元格  
-- 产品卡片/网格布局
-- 导航菜单项
-- 任何结构相似的兄弟元素
+## 🧪 Testing & Validation
 
-## 技术特点
-
-- **无弹窗设计**：点击扩展图标直接启动，操作更简洁
-- **实时预览**：鼠标悬停时实时显示元素信息
-- **智能选择器**：自动生成多种类型的选择器，适应不同使用场景
-- **表格化历史**：清晰的历史记录表格，信息一目了然
-- **本地存储**：使用 localStorage 确保数据持久化
-
-## 适用场景
-
-- **前端开发**：快速获取页面元素的 CSS 选择器
-- **自动化测试**：为测试脚本生成可靠的选择器
-- **网页分析**：分析页面结构和元素关系
-- **学习研究**：了解不同选择器的生成规则
-
-## 🧪 测试验证
-
-项目包含了一个测试页面 `test.html`，用于验证算法改进效果：
+The project includes a test page `test.html` to verify algorithm improvements:
 
 ```bash
-# 在浏览器中打开测试页面
+# Open test page in browser
 open test.html
 ```
 
-### 测试场景
-1. **无序列表**：验证列表项选择器生成
-2. **产品网格**：验证卡片元素选择器生成
-3. **数据表格**：验证表格行选择器生成
-4. **独立元素**：验证非列表元素的传统选择器生成
+### Test Scenarios
+1. **Unordered Lists**: Verify list item selector generation
+2. **Product Grids**: Verify card element selector generation
+3. **Data Tables**: Verify table row selector generation
+4. **Independent Elements**: Verify traditional selector generation for non-list elements
 
-### 预期结果
-- 多表格环境中的元素生成唯一选择器（如 `#today-airdrops td:nth-of-type(1)`）
-- 不再出现非唯一选择器（如 `tr > td:nth-child(1)`）
-- 优先使用祖先ID/属性组合的稳定选择器
-- 历史记录表格中显示正确的质量指示标识
+### Expected Results
+- Elements in multi-table environments generate unique selectors (like `#today-airdrops td:nth-of-type(1)`)
+- No more non-unique selectors (like `tr > td:nth-child(1)`)
+- Prioritize stable selectors using ancestor ID/attribute combinations
+- History table shows correct quality indicator markers
 
-### 🔧 调试测试
-在页面控制台中运行调试脚本：
+### 🔧 Debug Testing
+Run debug script in page console:
 ```bash
-# 在浏览器中打开 alpha.html 页面
+# Open alpha.html page in browser
 open test/alpha.html
 
-# 在控制台中加载调试脚本内容
-# (复制 debug-console.js 中的内容并粘贴到控制台)
+# Load debug script content in console
+# (Copy content from debug-console.js and paste into console)
 ```
 
-**控制台测试命令示例：**
+**Console Test Command Examples:**
 ```javascript
-// 测试特定元素的选择器生成
+// Test specific element selector generation
 const element = document.querySelector('#today-airdrops td');
-testElementSelector(element, '表格单元格');
+testElementSelector(element, 'Table Cell');
 
-// 验证选择器唯一性
+// Verify selector uniqueness
 const selector = '#today-airdrops td:nth-of-type(1)';
-console.log('唯一性:', document.querySelectorAll(selector).length === 1);
+console.log('Uniqueness:', document.querySelectorAll(selector).length === 1);
 ```
 
-## 💻 技术实现
+## 💻 Technical Implementation
 
-### 核心算法函数
-- `isElementInSimilarSiblingsList()` - 检测相似兄弟元素
-- `getElementStructuralFeatures()` - 分析元素结构特征
-- `generateParentBasedIndexSelector()` - 生成父元素+索引选择器
-- `areFeaturesStructurallySimilar()` - 判断结构相似性
+### Core Algorithm Functions
+- `isElementInSimilarSiblingsList()` - Detect similar sibling elements
+- `getElementStructuralFeatures()` - Analyze element structural features
+- `generateParentBasedIndexSelector()` - Generate parent element + index selectors
+- `areFeaturesStructurallySimilar()` - Judge structural similarity
 
-### 优化逻辑
-1. 识别列表项、表格行等典型重复结构
-2. 比较兄弟元素的结构特征（子元素、class等）
-3. 在相似环境中调整选择器类型的优先级
-4. 为列表元素提供更稳定的定位方案
+### Optimization Logic
+1. Identify typical repeating structures like list items, table rows
+2. Compare sibling element structural features (child elements, classes, etc.)
+3. Adjust selector type priority in similar environments
+4. Provide more stable positioning solutions for list elements
 
-## 注意事项
+## Notes
 
-- 🎯 **算法优化**：列表元素优先使用父元素+索引，避免依赖易变的文本内容
-- 📝 **选择器建议**：ID选择器仍然是最稳定的选择，其次是测试属性选择器
-- 💾 **存储限制**：历史记录最多保存 20 条，超出会自动删除最旧的记录
-- ⌨️ **快捷操作**：使用 ESC 键可以随时退出选择模式
-- 🔐 **权限需求**：扩展需要 "activeTab" 和 "scripting" 权限来注入脚本
+- 🎯 **Algorithm Optimization**: List elements prioritize parent element + index, avoiding dependency on volatile text content
+- 📝 **Selector Recommendations**: ID selectors remain most stable choice, followed by test attribute selectors
+- 💾 **Storage Limits**: History saves up to 20 entries, automatically deletes oldest when exceeded
+- ⌨️ **Quick Operations**: Use ESC key to exit selection mode anytime
+- 🔐 **Permission Requirements**: Extension requires "activeTab" and "scripting" permissions to inject scripts
 
-## 📝 更新日志
+## 📝 Changelog
 
-### v1.2 - 算法核心重构 🚀 **最新**
-- ⚡ **完全重写选择器生成算法**，解决多表格环境下的唯一性问题
-- 🎯 **实现祖先基础选择器**：自动向上查找有唯一标识的祖先元素
-- 🔍 **新增特异性评分系统**：确保选择器按稳定性和唯一性排序
-- 🛡️ **强化唯一性验证**：所有选择器保证在页面中唯一匹配
-- 📊 **优化算法优先级**：ID > 测试属性 > 祖先路径 > 其他方案
-- 🔧 **解决关键问题**：不再生成如 `tr > td:nth-child(1)` 这样的非唯一选择器
-- 📋 **新增调试工具**：控制台测试脚本和详细的测试文档
+### v1.2 - Core Algorithm Refactor 🚀 **Latest**
+- ⚡ **Complete rewrite of selector generation algorithm**, solving uniqueness issues in multi-table environments
+- 🎯 **Implemented ancestor-based selectors**: Automatically searches up for uniquely identified ancestor elements
+- 🔍 **New specificity scoring system**: Ensures selectors are sorted by stability and uniqueness
+- 🛡️ **Enhanced uniqueness validation**: All selectors guaranteed to uniquely match on page
+- 📊 **Optimized algorithm priorities**: ID > Test Attributes > Ancestor Path > Other Solutions
+- 🔧 **Solved key issues**: No longer generates non-unique selectors like `tr > td:nth-child(1)`
+- 📋 **New debugging tools**: Console test script and detailed testing documentation
 
-### v1.1 - 列表元素算法优化
-- ✨ 新增相似兄弟元素自动检测
-- 🎯 实现智能的父元素+索引选择器生成
-- 📊 优化选择器优先级排序逻辑
-- 📉 降低文本内容选择器在列表环境中的优先级
-- 🧪 添加全面的测试用例和说明文档
-- 📈 提升列表/表格元素选择器的稳定性
+### v1.1 - List Element Algorithm Optimization
+- ✨ Added automatic similar sibling element detection
+- 🎯 Implemented smart parent element + index selector generation
+- 📊 Optimized selector priority sorting logic
+- 📉 Reduced text content selector priority in list environments
+- 🧪 Added comprehensive test cases and documentation
+- 📈 Improved selector stability for list/table elements
 
-### v1.0 - 基础功能
-- 🎉 基础CSS选择器生成功能
-- 📋 历史记录和复制功能  
-- 🎨 可拖拽的信息面板
-- 💾 本地存储支持
+### v1.0 - Basic Features
+- 🎉 Basic CSS selector generation functionality
+- 📋 History recording and copy features
+- 🎨 Draggable information panel
+- 💾 Local storage support
 
+## 🚀 Publication Ready
+
+This extension is ready for Chrome Web Store publication with:
+- ✅ Complete English documentation
+- ✅ Professional icon design (16x16, 48x48, 128x128)
+- ✅ Optimized manifest.json
+- ✅ Automated packaging script
+- ✅ Comprehensive marketing materials
+
+## 📞 Support
+
+For technical issues or feature requests, please check the project documentation or submit an issue report.
